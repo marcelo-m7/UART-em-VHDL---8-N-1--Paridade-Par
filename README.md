@@ -82,8 +82,4 @@ E, na visão **Wave** do ModelSim, observamos:
 
 ---
 
-## ✅ Conclusão
-
-* O módulo UART envia e recebe o byte **0xAA** sem erros.
-* O oversampling 8× no receptor garantiu amostragens no centro dos bits, eliminando falhas de fase.
-* A arquitetura em FSM (Tx/Rx separados) facilita a síntese em FPGA e o debug em ModelSim.
+**[Repositório GitHub](https://github.com/marcelo-m7/UART-em-VHDL---8-N-1--Paridade-Par)**
