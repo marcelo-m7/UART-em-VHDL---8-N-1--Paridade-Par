@@ -1,9 +1,9 @@
 # Assignment 4 – UART em VHDL (8-N-1, Paridade Par)
 
-**Aluno**: Marcelo Santos  
-**Email**: a79433@ualg.pt  
-**UC**: Computação Reconfigurável  
-**Instituição**: Universidade do Algarve  
+**Aluno**: Marcelo Santos
+**Email**: [a79433@ualg.pt](mailto:a79433@ualg.pt)
+**UC**: Computação Reconfigurável
+**Instituição**: Universidade do Algarve
 
 ---
 
@@ -11,23 +11,22 @@
 
 Implementar em VHDL um **UART** assíncrono com as seguintes características:
 
-- **1 start bit**, **8 data bits (LSB first)**, **1 parity bit (even)**, **1 stop bit**.  
-- Dois processos separados: **Tx_Process** e **Rx_Process**.  
-- **Oversampling 8×** no receptor para amostragem no meio de cada bit.  
-- Validação via **loopback** (TX→RX) em testbench e simulação no ModelSim.
+* **1 start bit**, **8 data bits (LSB first)**, **1 parity bit (even)**, **1 stop bit**.
+* Dois processos separados: **Tx\_Process** e **Rx\_Process**.
+* **Oversampling 8×** no receptor para amostragem no meio de cada bit.
+* Validação via **loopback** (TX→RX) em testbench e simulação no ModelSim.
 
 ---
 
-## 📁 Estrutura do Repositório
+## 📁 Estrutura do Projeto
 
 ```
 /
 ├── src/
 │   ├── UART.vhd        ← Código do módulo UART
 │   ├── UART\_tb.vhd     ← Testbench em loopback
-│   └── image.png       ← Captura de tela da simulação no ModelSim
 └── README.md           ← Este documento
-````
+```
 
 ---
 
@@ -35,50 +34,50 @@ Implementar em VHDL um **UART** assíncrono com as seguintes características:
 
 ### UART.vhd
 
-- **Transmissor (Tx_Process)**  
-  - FSM com estados **IDLE → START → DATA → PARITY → STOP**.  
-  - Usa `BIT_TICKS = 16` ciclos de `clk` por bit para temporização.  
-  - Calcula paridade par via XOR dos 8 bits antes de enviar.
+* **Transmissor (Tx\_Process)**
 
-- **Receptor (Rx_Process)**  
-  - Detecta `rx_in = '0'` (start), depois **espera meio período** (8 ticks) para alinhamento 8×.  
-  - Em seguida amostra cada bit no meio de seu período (16 ticks por bit).  
-  - Reconstrói o byte paralelo (`data_out`) e sinaliza `data_valid` por um ciclo.  
+  * FSM: `IDLE → START → DATA → PARITY → STOP`
+  * Envia 11 bits por frame com `BIT_TICKS = 16` ciclos/bit.
+  * Calcula paridade par com XOR dos bits.
 
-### UART_tb.vhd
+* **Receptor (Rx\_Process)**
 
-- Instancia o UART e faz **loopback**: `rx_in <= tx_out`.  
-- Gera clock de **50 MHz** (`20 ns` período) e aplica reset inicial.  
-- Envia o byte **0xAA** (`10101010₂`), aguarda `busy='0'` e depois `data_valid='1'`.  
-- Emite **report** de sucesso (`data_out = 0xAA`) ou erro.
+  * FSM: `RX_IDLE → RX_START → RX_DATA → RX_PARITY → RX_STOP`
+  * Amostragem sincronizada via oversampling 8× (amostra no meio de cada bit).
+  * Problema anterior: o estado `RX_STOP` esperava ticks demais, perdendo frames contínuos.
+  * **Correção aplicada**: reduzir `RX_STOP_COUNT` para `BIT_TICKS`, permitindo recepção contínua sem perda do segundo byte.
+
+### tb\_uart.vhd
+
+* Clock de 50 MHz (`20 ns` período).
+* Reset inicial seguido do envio de dois bytes:
+
+  * 1º byte = `0xAA` (`10101010₂`)
+  * 2º byte = `0xFF` (`11111111₂`)
+* Aguarda sinal `busy='0'` e depois `data_valid='1'` para checar `data_out`.
+* Exibe no `Transcript` o sucesso ou erro da recepção.
 
 ---
 
 ## 🧪 Resultados da Simulação
 
-Após compilar e rodar:
+Após a correção do tempo de parada na FSM de recepção, os dois bytes foram recebidos corretamente em sequência.
 
-```tcl
-vcom -2002 src/UART.vhd
-vcom -2002 src/UART_tb.vhd
-vsim work.UART_tb
-run -all
-````
+### 🖼️ Byte 1: `0xAA` Recebido com Sucesso
 
-Obtivemos no Transcript a confirmação:
+![Byte 1 recebido corretamente](byte_1.png)´
+
+### 🖼️ Byte 2: `0xFF` Recebido com Sucesso
+
+![Byte 2 recebido corretamente](byte_2.png)
+
+### 📜 Transcript da Simulação
 
 ```
-# ** Note: Recepção bem-sucedida: data_out = 170 (0xAA)
+# ** Note: Byte 1 recebido corretamente: 0xAA
+# ** Note: Byte 2 recebido corretamente: 0xFF
+# ** Note: Teste concluído!
 ```
-
-E, na visão **Wave** do ModelSim, observamos:
-
-* **`tx_out`** transmitindo os 11 bits do frame (start→dados→parity→stop).
-* **`busy`** alto durante toda a transmissão.
-* **`data_valid`** pulso alto no ciclo de recepção final.
-* **`data_out`** corretamente igual a `10101010₂`.
-
-![Simulação UART no ModelSim](image.png)
 
 ---
 
